@@ -1143,7 +1143,18 @@ function toggleAudio() {
   audioEnabled = !audioEnabled;
   const btn = document.getElementById('audioBtn');
   if (audioEnabled) {
-    if (!audioCtx) audioCtx = new AudioContext();
+    try {
+      if (!audioCtx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioCtx();
+        audioCtx.addEventListener('statechange', () => {
+          if (audioEnabled && audioCtx.state === 'running') syncAudio();
+        });
+      }
+    } catch(e) {
+      audioEnabled = false; btn.textContent = '♪ Audio Off'; btn.classList.remove('on-cyan');
+      return;
+    }
     audioCtx.resume().then(() => { syncAudio(); }).catch(() => {
       audioEnabled = false; btn.textContent = '♪ Audio Off'; btn.classList.remove('on-cyan');
     });
