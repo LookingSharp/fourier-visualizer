@@ -165,19 +165,19 @@ input[type=number]:focus, input[type=text]:focus { outline: none; border-color: 
         <div>
           <div style="display:flex;justify-content:space-between;margin-bottom:2px">
             <span style="color:var(--muted);font-size:11px">Base speed</span>
-            <span style="color:var(--cyan);font-size:11px;font-variant-numeric:tabular-nums" id="sweepSpeedVal">60</span>
+            <span style="color:var(--cyan);font-size:11px;font-variant-numeric:tabular-nums" id="sweepSpeedVal">250</span>
             <span style="color:var(--muted);font-size:10px">Hz/s</span>
           </div>
-          <input type="range" id="sweepSpeedSlider" min="5" max="400" step="5" value="60"
+          <input type="range" id="sweepSpeedSlider" min="5" max="400" step="5" value="250"
             style="width:100%;accent-color:var(--cyan)"
             oninput="sweepBaseSpeed=+this.value;document.getElementById('sweepSpeedVal').textContent=this.value">
         </div>
         <div>
           <div style="display:flex;justify-content:space-between;margin-bottom:2px">
             <span style="color:var(--muted);font-size:11px">Mass slowdown</span>
-            <span style="color:#a78bfa;font-size:11px;font-variant-numeric:tabular-nums" id="sweepMassVal">0</span>
+            <span style="color:#a78bfa;font-size:11px;font-variant-numeric:tabular-nums" id="sweepMassVal">500</span>
           </div>
-          <input type="range" id="sweepMassSlider" min="0" max="1000" step="1" value="0"
+          <input type="range" id="sweepMassSlider" min="0" max="1000" step="1" value="500"
             style="width:100%;accent-color:#a78bfa"
             oninput="sweepMassFactor=+this.value;document.getElementById('sweepMassVal').textContent=this.value">
         </div>
@@ -287,8 +287,8 @@ let windingFreq  = 0;
 let fourierCache = null;
 let fourierTimer = null;
 let isSweeping    = false, sweepDir = 1, sweepLastT = null;
-let sweepBaseSpeed  = 60;    // Hz/s constant speed
-let sweepMassFactor = 0;     // how much mass slows the sweep
+let sweepBaseSpeed  = 250;   // Hz/s constant speed
+let sweepMassFactor = 500;   // how much mass slows the sweep
 let sweepSmooth     = false; // smooth the mass signal used for slowdown
 let sweepPauseMs    = 0;     // ms to hold at each local peak
 let sweepSmoothedMag = 0;
@@ -1139,6 +1139,7 @@ function runTests() {
 updateWindingSlider();
 updateWindLabel();
 applyPreset('scale');
+toggleSweep();
 </script>
 </body>
 </html>
