@@ -1144,7 +1144,10 @@ function toggleAudio() {
   const btn = document.getElementById('audioBtn');
   if (audioEnabled) {
     if (!audioCtx) audioCtx = new AudioContext();
-    syncAudio(); btn.textContent = '♪ Audio On'; btn.classList.add('on-cyan');
+    audioCtx.resume().then(() => { syncAudio(); }).catch(() => {
+      audioEnabled = false; btn.textContent = '♪ Audio Off'; btn.classList.remove('on-cyan');
+    });
+    btn.textContent = '♪ Audio On'; btn.classList.add('on-cyan');
   } else {
     stopAllOsc(); btn.textContent = '♪ Audio Off'; btn.classList.remove('on-cyan');
   }
