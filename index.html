@@ -1,1 +1,213 @@
-<a href="fourier-visualizer.html">fourier-visualizer.html</a>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fourier Visualizer</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d0f1a; --panel: #161929; --border: #252840;
+  --text: #dde1f0; --muted: #5a6080; --accent: #8b5cf6; --cyan: #06b6d4;
+}
+
+html, body {
+  min-height: 100%; background: var(--bg); color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Animated background grid ──────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(139,92,246,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139,92,246,.07) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: gridDrift 20s linear infinite;
+}
+@keyframes gridDrift { from { background-position: 0 0; } to { background-position: 48px 48px; } }
+
+/* ── Layout ─────────────────────────────────────── */
+.page {
+  position: relative; z-index: 1;
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 40px 20px; gap: 0;
+}
+
+/* ── Hero ───────────────────────────────────────── */
+.hero { text-align: center; margin-bottom: 44px; }
+
+.hero-icon {
+  font-size: 56px; line-height: 1; display: block; margin-bottom: 18px;
+  filter: drop-shadow(0 0 24px rgba(139,92,246,.6));
+  animation: pulse 3s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { filter: drop-shadow(0 0 18px rgba(139,92,246,.5)); }
+  50%       { filter: drop-shadow(0 0 36px rgba(6,182,212,.7)); }
+}
+
+.hero h1 {
+  font-size: clamp(26px, 6vw, 42px); font-weight: 700; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #c4b5fd 0%, #06b6d4 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; margin-bottom: 12px;
+}
+.hero p {
+  font-size: clamp(13px, 2.5vw, 16px); color: var(--muted); max-width: 380px; margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ── Launch button ──────────────────────────────── */
+.launch-wrap { text-align: center; margin-bottom: 36px; }
+
+.btn-launch {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, #7c3aed, #0891b2);
+  color: #fff; font-size: 18px; font-weight: 700;
+  padding: 16px 36px; border-radius: 50px; text-decoration: none;
+  border: none; cursor: pointer;
+  box-shadow: 0 0 32px rgba(139,92,246,.4), 0 4px 16px rgba(0,0,0,.4);
+  transition: transform .15s, box-shadow .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-launch:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 48px rgba(139,92,246,.6), 0 8px 24px rgba(0,0,0,.5);
+}
+.btn-launch:active { transform: translateY(0); }
+.btn-launch .arrow { font-size: 20px; transition: transform .2s; }
+.btn-launch:hover .arrow { transform: translateX(4px); }
+
+.detected-label {
+  margin-top: 12px; font-size: 12px; color: var(--muted);
+}
+.detected-label strong { color: var(--cyan); }
+
+/* ── Divider ────────────────────────────────────── */
+.divider {
+  width: 100%; max-width: 460px; display: flex; align-items: center; gap: 14px;
+  margin-bottom: 28px;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.divider span { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+/* ── Version cards ──────────────────────────────── */
+.cards {
+  display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
+  max-width: 480px; width: 100%;
+}
+
+.card {
+  flex: 1 1 180px; max-width: 220px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+  padding: 22px 20px; text-decoration: none; color: var(--text);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  transition: border-color .2s, background .2s, transform .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.card:hover {
+  background: #1e2235; border-color: var(--accent);
+  transform: translateY(-3px);
+}
+.card:active { transform: translateY(0); }
+.card.highlight { border-color: #3b2f6e; background: #1a1630; }
+.card .icon { font-size: 32px; }
+.card .title { font-size: 14px; font-weight: 600; }
+.card .desc { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.5; }
+.card .badge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+  background: #2d1f5e; color: var(--accent); border-radius: 4px; padding: 2px 7px;
+}
+
+/* ── Features strip ─────────────────────────────── */
+.features {
+  display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: center;
+  max-width: 500px; margin-top: 44px;
+}
+.feature {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; color: var(--muted);
+}
+.feature .dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--accent);
+}
+.feature .dot.cyan { background: var(--cyan); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <span class="hero-icon">&#127926;</span>
+    <h1>Fourier Visualizer</h1>
+    <p>Explore musical frequencies, winding analysis, and the Fourier transform — interactively.</p>
+  </div>
+
+  <!-- Primary launch CTA (destination set by JS) -->
+  <div class="launch-wrap">
+    <a class="btn-launch" id="launchBtn" href="fourier-visualizer.html">
+      Launch Visualizer <span class="arrow">&#8594;</span>
+    </a>
+    <p class="detected-label" id="detectedLabel"></p>
+  </div>
+
+  <!-- Manual override -->
+  <div class="divider"><span>or choose a version</span></div>
+  <div class="cards">
+    <a class="card" id="cardDesktop" href="fourier-visualizer.html">
+      <span class="icon">&#128187;</span>
+      <span class="title">Desktop</span>
+      <span class="desc">Sidebar controls, multi-panel layout</span>
+    </a>
+    <a class="card" id="cardMobile" href="fourier-visualizer-mobile.html">
+      <span class="icon">&#128242;</span>
+      <span class="title">Mobile</span>
+      <span class="desc">Tab navigation, touch-optimized</span>
+    </a>
+  </div>
+
+  <!-- Feature pills -->
+  <div class="features">
+    <div class="feature"><span class="dot"></span>Piano roll sequencer</div>
+    <div class="feature"><span class="dot cyan"></span>Winding diagram</div>
+    <div class="feature"><span class="dot"></span>Fourier magnitude plot</div>
+    <div class="feature"><span class="dot cyan"></span>Sweep animation</div>
+    <div class="feature"><span class="dot"></span>Web Audio playback</div>
+    <div class="feature"><span class="dot cyan"></span>Custom frequencies</div>
+  </div>
+
+</div>
+
+<script>
+// Detect touch / mobile: coarse pointer (finger) or narrow viewport
+const isMobile = window.matchMedia('(pointer: coarse)').matches
+              || window.innerWidth < 768;
+
+const btn   = document.getElementById('launchBtn');
+const label = document.getElementById('detectedLabel');
+
+if (isMobile) {
+  btn.href = 'fourier-visualizer-mobile.html';
+  label.innerHTML = 'Detected: <strong>mobile</strong> — launching the touch-optimised version';
+  document.getElementById('cardMobile').classList.add('highlight');
+  const badge = document.createElement('span');
+  badge.className = 'badge'; badge.textContent = 'recommended';
+  document.getElementById('cardMobile').appendChild(badge);
+} else {
+  btn.href = 'fourier-visualizer.html';
+  label.innerHTML = 'Detected: <strong>desktop</strong> — launching the full-featured version';
+  document.getElementById('cardDesktop').classList.add('highlight');
+  const badge = document.createElement('span');
+  badge.className = 'badge'; badge.textContent = 'recommended';
+  document.getElementById('cardDesktop').appendChild(badge);
+}
+</script>
+</body>
+</html>

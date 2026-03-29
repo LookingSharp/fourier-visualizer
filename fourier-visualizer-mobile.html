@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Fourier Visualizer – Mobile</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d0f1a; --panel: #161929; --border: #252840;
+  --text: #dde1f0; --muted: #5a6080; --accent: #8b5cf6; --cyan: #06b6d4;
+  --nav-h: 58px;
+}
+html, body {
+  height: 100%; background: var(--bg); color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px;
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────── */
+header {
+  padding: 10px 14px; background: var(--panel);
+  border-bottom: 1px solid var(--border); font-size: 15px; font-weight: 600;
+  flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+header .sub { color: var(--muted); font-weight: 400; font-size: 11px; }
+
+/* ── Shell ───────────────────────────────────────── */
+.shell {
+  display: flex; flex-direction: column;
+  height: 100%; overflow: hidden;
+}
+.tab-area {
+  flex: 1; overflow: hidden; position: relative;
+}
+
+/* ── Tab panels ──────────────────────────────────── */
+.tab-panel {
+  position: absolute; inset: 0;
+  display: none; flex-direction: column;
+  overflow: hidden;
+}
+.tab-panel.active { display: flex; }
+
+/* ── Bottom nav ──────────────────────────────────── */
+.bottom-nav {
+  display: flex; height: var(--nav-h);
+  background: var(--panel); border-top: 1px solid var(--border);
+  flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px; border: none; background: none;
+  color: var(--muted); font-size: 10px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: color .15s;
+}
+.nav-btn .icon { font-size: 20px; line-height: 1; }
+.nav-btn.active { color: var(--accent); }
+
+/* ── Shared button/input styles ──────────────────── */
+.btn {
+  background: #1e2235; border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 9px 12px; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.btn:active { background: #252840; }
+.btn.on { background: #2d1f5e; border-color: var(--accent); color: var(--accent); }
+.btn.on-cyan { background: #0e2d35; border-color: var(--cyan); color: var(--cyan); }
+.btn.play { font-weight: 600; font-size: 14px; }
+input[type=range] {
+  accent-color: var(--accent); width: 100%; cursor: pointer; touch-action: pan-y;
+  height: 20px;
+}
+input[type=number], input[type=text] {
+  background: #1e2235; border: 1px solid var(--border);
+  color: var(--text); border-radius: 5px; padding: 7px 8px; font-size: 13px;
+}
+input[type=number]:focus, input[type=text]:focus { outline: none; border-color: var(--accent); }
+input[type=checkbox] { accent-color: #a78bfa; width: 16px; height: 16px; }
+
+/* ── Section headings ────────────────────────────── */
+.section-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--muted); margin-bottom: 6px;
+}
+
+/* ── Canvas wrappers ─────────────────────────────── */
+.canvas-wrap {
+  position: relative; flex-shrink: 0;
+}
+.canvas-wrap canvas {
+  display: block; width: 100%; height: 100%;
+  background: #0a0c18; border-radius: 7px; border: 1px solid var(--border);
+}
+.canvas-label {
+  position: absolute; top: 5px; left: 8px; font-size: 10px; color: var(--muted);
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  pointer-events: none; z-index: 1;
+}
+.fourier-hint {
+  position: absolute; bottom: 5px; right: 8px; font-size: 10px;
+  color: var(--muted); pointer-events: none; z-index: 1;
+}
+
+/* ══════════════════════════════════════════════════
+   TAB 1 – PIANO ROLL
+══════════════════════════════════════════════════ */
+#tab-piano {
+  padding: 8px 8px 0;
+  gap: 8px;
+}
+#tab-piano .piano-wrap {
+  flex: 1; min-height: 0; position: relative;
+}
+#tab-piano .piano-wrap canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  background: #0a0c18; border-radius: 7px; border: 1px solid var(--border);
+}
+.transport-bar {
+  flex-shrink: 0; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 8px;
+}
+.bpm-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.bpm-val { font-size: 26px; font-weight: 700; color: var(--cyan); min-width: 44px; }
+.bpm-unit { color: var(--muted); font-size: 12px; }
+.bpm-row input[type=range] { flex: 1; }
+.beat-row { display: flex; gap: 6px; }
+.beat-row .btn { flex: 1; padding: 8px; font-size: 12px; }
+.preset-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+}
+.preset-grid .btn { font-size: 12px; padding: 9px 4px; }
+
+/* ══════════════════════════════════════════════════
+   TAB 2 – ANALYSIS
+══════════════════════════════════════════════════ */
+#tab-analysis {
+  overflow-y: auto; gap: 8px; padding: 8px;
+}
+.time-wrap {
+  height: 130px;
+}
+.bottom-pair {
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.winding-wrap {
+  width: 46vw; aspect-ratio: 1 / 1; flex-shrink: 0; position: relative;
+}
+.winding-wrap canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  background: #0a0c18; border-radius: 7px; border: 1px solid var(--border);
+}
+.fourier-wrap {
+  flex: 1; height: 46vw; position: relative;
+}
+.fourier-wrap canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  background: #0a0c18; border-radius: 7px; border: 1px solid var(--border);
+}
+.winding-controls {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px;
+}
+.winding-header {
+  display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px;
+}
+.winding-val { font-size: 28px; font-weight: 700; color: var(--cyan); font-variant-numeric: tabular-nums; }
+.winding-unit { color: var(--muted); font-size: 12px; }
+.sweep-row { display: flex; gap: 6px; margin-top: 10px; }
+.sweep-row .btn { flex: 1; }
+.sweep-row .btn-bounce { width: 44px; flex: none; font-size: 18px; }
+
+/* ══════════════════════════════════════════════════
+   TAB 3 – SETTINGS
+══════════════════════════════════════════════════ */
+#tab-settings {
+  overflow-y: auto;
+}
+.settings-inner {
+  display: flex; flex-direction: column; gap: 14px; padding: 12px;
+}
+.settings-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px;
+}
+.settings-card .row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.settings-card .row:last-child { margin-bottom: 0; }
+.settings-card .row label { color: var(--muted); font-size: 12px; flex-shrink: 0; }
+.speed-label-row {
+  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;
+}
+.speed-label-row span { font-size: 12px; color: var(--muted); }
+.speed-label-row .val { color: var(--cyan); font-variant-numeric: tabular-nums; }
+
+/* custom freq list */
+.custom-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.cust-item {
+  display: flex; align-items: center; gap: 8px; background: #1e2235;
+  border-radius: 6px; padding: 8px 10px; border: 1px solid var(--border);
+}
+.cust-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.cust-label { flex: 1; font-size: 13px; }
+.btn-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 4px; }
+.btn-x:active { color: #ef4444; }
+
+/* test output */
+#testOutput { font-size: 11px; font-family: monospace; line-height: 1.7; color: var(--muted); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <span>&#127926; Fourier Visualizer</span>
+    <span class="sub">mobile</span>
+  </header>
+
+  <div class="tab-area">
+
+    <!-- ══ TAB: PIANO ROLL ══════════════════════════ -->
+    <div class="tab-panel active" id="tab-piano">
+
+      <div class="piano-wrap">
+        <span class="canvas-label">Piano Roll — tap &amp; drag to paint notes</span>
+        <canvas id="cPiano"></canvas>
+      </div>
+
+      <div class="transport-bar">
+        <div class="bpm-row">
+          <span class="bpm-val" id="bpmVal">120</span>
+          <span class="bpm-unit">BPM</span>
+          <input type="range" id="bpmSlider" min="40" max="240" value="120"
+            oninput="setBpm(+this.value)">
+        </div>
+        <div class="beat-row">
+          <button class="btn" onclick="setBeatCount(4)">4 beats</button>
+          <button class="btn" onclick="setBeatCount(8)">8</button>
+          <button class="btn" onclick="setBeatCount(16)">16</button>
+        </div>
+        <button class="btn play" id="playBtn" onclick="togglePlay()">&#9654; Play</button>
+        <div class="preset-grid">
+          <button class="btn" onclick="applyPreset('scale')">C Scale</button>
+          <button class="btn" onclick="applyPreset('cMaj')">C Major</button>
+          <button class="btn" onclick="applyPreset('aMaj')">A Major</button>
+          <button class="btn" onclick="applyPreset('fifth')">5th Walk</button>
+          <button class="btn" onclick="applyPreset('octave')">Octaves</button>
+          <button class="btn" onclick="clearRoll()">&#215; Clear</button>
+        </div>
+      </div>
+
+    </div><!-- /tab-piano -->
+
+    <!-- ══ TAB: ANALYSIS ════════════════════════════ -->
+    <div class="tab-panel" id="tab-analysis">
+
+      <div class="canvas-wrap time-wrap">
+        <span class="canvas-label">Time Domain</span>
+        <canvas id="cTime"></canvas>
+      </div>
+
+      <div class="bottom-pair">
+        <div class="winding-wrap">
+          <span class="canvas-label">Winding</span>
+          <canvas id="cWinding"></canvas>
+        </div>
+        <div class="fourier-wrap">
+          <span class="canvas-label">Fourier</span>
+          <span class="fourier-hint">tap to set freq</span>
+          <canvas id="cFourier"></canvas>
+        </div>
+      </div>
+
+      <div class="winding-controls">
+        <div class="section-title">Winding Frequency</div>
+        <div class="winding-header">
+          <span class="winding-val" id="windVal">0.00</span>
+          <span class="winding-unit" id="windUnit">Hz</span>
+        </div>
+        <input type="range" id="windSlider" min="0" max="600" step="1" value="0"
+          style="accent-color:var(--cyan)">
+        <div class="sweep-row">
+          <button class="btn" id="animBtn" onclick="toggleSweep()">&#9654; Sweep</button>
+          <button class="btn btn-bounce" onclick="sweepBounce()" title="Reverse direction">&#8646;</button>
+          <button class="btn" id="audioBtn" onclick="toggleAudio()">&#9835; Audio Off</button>
+        </div>
+      </div>
+
+    </div><!-- /tab-analysis -->
+
+    <!-- ══ TAB: SETTINGS ════════════════════════════ -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="settings-inner">
+
+        <div class="settings-card">
+          <div class="section-title">Sweep Settings</div>
+          <div>
+            <div class="speed-label-row">
+              <span>Base speed</span>
+              <span class="val" id="sweepSpeedVal">60</span>
+              <span>Hz/s</span>
+            </div>
+            <input type="range" id="sweepSpeedSlider" min="5" max="400" step="5" value="60"
+              style="accent-color:var(--cyan)"
+              oninput="sweepBaseSpeed=+this.value;document.getElementById('sweepSpeedVal').textContent=this.value">
+          </div>
+          <div style="margin-top:10px">
+            <div class="speed-label-row">
+              <span>Mass slowdown</span>
+              <span style="color:#a78bfa;font-variant-numeric:tabular-nums" id="sweepMassVal">0</span>
+            </div>
+            <input type="range" id="sweepMassSlider" min="0" max="1000" step="1" value="0"
+              style="accent-color:#a78bfa"
+              oninput="sweepMassFactor=+this.value;document.getElementById('sweepMassVal').textContent=this.value">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+            <input type="checkbox" id="sweepSmoothCb" onchange="sweepSmooth=this.checked">
+            <label for="sweepSmoothCb" style="color:var(--muted);font-size:13px;cursor:pointer">
+              Smooth mass response</label>
+          </div>
+          <div style="margin-top:10px">
+            <div class="speed-label-row">
+              <span>Pause on peak</span>
+              <span style="color:#ffd93d;font-variant-numeric:tabular-nums" id="sweepPauseVal">0</span>
+              <span>ms</span>
+            </div>
+            <input type="range" id="sweepPauseSlider" min="0" max="3000" step="50" value="0"
+              style="accent-color:#ffd93d"
+              oninput="sweepPauseMs=+this.value;document.getElementById('sweepPauseVal').textContent=this.value">
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="section-title">Custom Frequencies</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="custFreq" value="2" min="0.1" max="20000" step="0.5"
+              style="flex:1">
+            <span style="color:var(--muted);font-size:12px">Hz</span>
+            <button class="btn" style="width:auto;padding:8px 14px" onclick="addCustomFreq()">+</button>
+          </div>
+          <div class="custom-list" id="custList"></div>
+        </div>
+
+        <div class="settings-card">
+          <div class="section-title">Tests</div>
+          <button class="btn" onclick="runTests()" style="width:100%">&#9654; Run Tests</button>
+          <div id="testOutput"></div>
+        </div>
+
+      </div>
+    </div><!-- /tab-settings -->
+
+  </div><!-- /tab-area -->
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-piano" onclick="showTab('piano',this)">
+      <span class="icon">&#127929;</span><span>Piano</span>
+    </button>
+    <button class="nav-btn" id="nav-analysis" onclick="showTab('analysis',this)">
+      <span class="icon">&#128202;</span><span>Analysis</span>
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="showTab('settings',this)">
+      <span class="icon">&#9881;</span><span>Settings</span>
+    </button>
+  </nav>
+
+</div><!-- /shell -->
+
+<script>
+// ─── Tab switching ────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  requestAnimationFrame(renderAll);
+}
+
+// ─── Musical note data ────────────────────────────────────────
+const NOTE_NAMES   = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_COLORS  = {
+  'C':'#ff6b6b','C#':'#ff8c6b','D':'#ffa94d','D#':'#ffcc5c',
+  'E':'#ffd93d','F':'#6bcb77','F#':'#4dd9ac','G':'#4d96ff',
+  'G#':'#6e7fff','A':'#a29bfe','A#':'#c79bf0','B':'#fd79a8'
+};
+function buildNotes(octLo, octHi) {
+  const out = [];
+  for (let oct = octHi; oct >= octLo; oct--) {
+    for (let ni = 11; ni >= 0; ni--) {
+      const p = NOTE_NAMES[ni];
+      const semi = (oct * 12 + ni) - (4 * 12 + 9);
+      out.push({
+        key: p + oct, pitch: p, oct,
+        freq: Math.round(440 * Math.pow(2, semi/12) * 100) / 100,
+        isSharp: p.includes('#'), color: NOTE_COLORS[p]
+      });
+    }
+  }
+  return out;
+}
+const MUSIC_NOTES = buildNotes(3, 5); // B5 → C3, 36 notes
+
+// ─── State ───────────────────────────────────────────────────
+let beatCount   = 8;
+let pianoRoll   = Array.from({length: beatCount}, () => new Set());
+let bpm         = 120;
+let isPlaying   = false;
+let currentBeat = 0;
+let previewBeat = 0;
+let playTimerId = null;
+
+let customComps = [];  // { id, freq, amp, color }
+let custNextId  = 1;
+const CUST_PALETTE = ['#f0a500','#e84393','#00e5ff','#76ff03','#ff6d00','#ea80fc'];
+
+let components  = [];  // always = customComps + beatComps
+let beatComps   = [];
+
+let windingFreq  = 0;
+let fourierCache = null;
+let fourierTimer = null;
+let isSweeping    = false, sweepDir = 1, sweepLastT = null;
+let sweepBaseSpeed  = 60;
+let sweepMassFactor = 0;
+let sweepSmooth     = false;
+let sweepPauseMs    = 0;
+let sweepSmoothedMag = 0;
+let sweepRollingMax  = 0;
+let sweepPauseUntil = null;
+let snapFreq        = null;
+let audioEnabled = false, audioCtx = null, oscillators = {};
+
+// ─── Params ───────────────────────────────────────
+const SNAP_CYCLES = 4;
+
+function getParams() {
+  const freqs = components.map(c => c.freq);
+  if (freqs.length === 0) return { T: 2, fourierT: 2, windT: 2, displayT: 2, N: 800, fMax: 20, snapped: false };
+
+  const maxF = Math.max(...freqs);
+  const minF = Math.min(...freqs);
+  const fourierT = maxF > 30 ? 0.5 : 2;
+  const fMax     = maxF > 30 ? Math.max(600, Math.ceil(maxF * 1.5 / 100) * 100) : 20;
+
+  if (snapFreq !== null) {
+    const windT = SNAP_CYCLES / snapFreq;
+    return { T: fourierT, fourierT, windT, displayT: windT, N: 800, fMax, snapped: true };
+  }
+
+  const displayT = Math.min(2, 4 / minF);
+  return { T: fourierT, fourierT, windT: fourierT, displayT, N: 800, fMax, snapped: false };
+}
+
+function nearestComponentFreq(w, toleranceRatio = 0.02) {
+  let best = null, bestDist = Infinity;
+  for (const c of components) {
+    const d = Math.abs(c.freq - w);
+    if (d < bestDist) { bestDist = d; best = c.freq; }
+  }
+  if (best !== null && bestDist / best <= toleranceRatio) return best;
+  return null;
+}
+
+function getSignalPeak(displayT) {
+  if (components.length === 0) return 1;
+  let peak = 0.001;
+  for (let i = 0; i <= 400; i++) {
+    peak = Math.max(peak, Math.abs(evalSignal((i / 400) * displayT)));
+  }
+  return peak * 1.1;
+}
+
+// ─── Signal ───────────────────────────────────────────────────
+function evalSignal(t) {
+  return components.reduce((s, c) => s + c.amp * Math.sin(2 * Math.PI * c.freq * t), 0);
+}
+
+// ─── Fourier ─────────────────────────────────────────────────
+function computeFourier() {
+  const { T, N, fMax } = getParams();
+  const FN  = 800;
+  const mag = new Float32Array(FN + 1);
+  const cxA = new Float32Array(FN + 1);
+  const cyA = new Float32Array(FN + 1);
+  const sig = new Float32Array(N);
+  for (let j = 0; j < N; j++) sig[j] = evalSignal((j / N) * T);
+  for (let i = 0; i <= FN; i++) {
+    const w = (i / FN) * fMax;
+    let cx = 0, cy = 0;
+    for (let j = 0; j < N; j++) {
+      const th = 2 * Math.PI * w * (j / N) * T;
+      cx += sig[j] * Math.cos(th);
+      cy += sig[j] * Math.sin(th);
+    }
+    cxA[i] = cx / N; cyA[i] = cy / N;
+    mag[i] = Math.sqrt(cxA[i] ** 2 + cyA[i] ** 2);
+  }
+  fourierCache = { mag, cx: cxA, cy: cyA, fMax, T, FN };
+}
+
+function scheduleFourier() {
+  clearTimeout(fourierTimer);
+  fourierTimer = setTimeout(() => { computeFourier(); drawFourier(); updateWindingSlider(); }, 60);
+}
+
+function rebuildComponents() {
+  components = [...customComps, ...beatComps];
+}
+
+// ─── Canvas helpers ───────────────────────────────────────────
+function getCtx(id) {
+  const canvas = document.getElementById(id);
+  const rect   = canvas.getBoundingClientRect();
+  const dpr    = window.devicePixelRatio || 1;
+  const pw = Math.round(rect.width * dpr), ph = Math.round(rect.height * dpr);
+  if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w: rect.width, h: rect.height };
+}
+function line(ctx, x1, y1, x2, y2) {
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+}
+
+// ─── Draw: Piano Roll ─────────────────────────────────────────
+const LABEL_W = 46;
+let prDragging = false, prDragVal = null;
+
+function getCellAt(clientX, clientY) {
+  const canvas = document.getElementById('cPiano');
+  const rect   = canvas.getBoundingClientRect();
+  const x = clientX - rect.left, y = clientY - rect.top;
+  const noteH = rect.height / MUSIC_NOTES.length;
+  const beatW = (rect.width - LABEL_W) / beatCount;
+  const beat  = Math.floor((x - LABEL_W) / beatW);
+  const ni    = Math.floor(y / noteH);
+  if (x < LABEL_W || beat < 0 || beat >= beatCount || ni < 0 || ni >= MUSIC_NOTES.length)
+    return null;
+  return { beat, ni };
+}
+
+function toggleCell(beat, ni) {
+  const key = MUSIC_NOTES[ni].key;
+  if (prDragVal === null) prDragVal = !pianoRoll[beat].has(key);
+  if (prDragVal) pianoRoll[beat].add(key); else pianoRoll[beat].delete(key);
+  if (!isPlaying) { previewBeat = beat; applyBeat(beat); }
+  drawPianoRoll();
+}
+
+function drawPianoRoll() {
+  const { ctx, w, h } = getCtx('cPiano');
+  ctx.clearRect(0, 0, w, h);
+  const noteH = h / MUSIC_NOTES.length;
+  const beatW = (w - LABEL_W) / beatCount;
+  const active = isPlaying ? currentBeat : previewBeat;
+
+  for (let ni = 0; ni < MUSIC_NOTES.length; ni++) {
+    const y = ni * noteH;
+    ctx.fillStyle = MUSIC_NOTES[ni].isSharp ? '#0e1020' : '#0b0e1a';
+    ctx.fillRect(LABEL_W, y, w - LABEL_W, noteH);
+  }
+
+  {
+    const x = LABEL_W + active * beatW;
+    ctx.fillStyle = '#ffffff08';
+    ctx.fillRect(x, 0, beatW, h);
+  }
+
+  for (let b = 0; b < beatCount; b++) {
+    for (let ni = 0; ni < MUSIC_NOTES.length; ni++) {
+      const note = MUSIC_NOTES[ni];
+      if (!pianoRoll[b].has(note.key)) continue;
+      const y = ni * noteH, x = LABEL_W + b * beatW;
+      const alpha = b === active ? 'ff' : 'aa';
+      ctx.fillStyle = note.color + alpha;
+      ctx.fillRect(x + 1, y + 1, beatW - 2, noteH - 2);
+      if (noteH >= 10 && beatW >= 20) {
+        ctx.fillStyle = '#00000099';
+        ctx.font = `${Math.min(9, noteH * 0.72)}px monospace`;
+        ctx.textAlign = 'left';
+        ctx.fillText(note.pitch, x + 3, y + noteH * 0.82);
+      }
+    }
+  }
+
+  ctx.strokeStyle = '#1c2038'; ctx.lineWidth = 0.5;
+  for (let b = 0; b <= beatCount; b++) {
+    const x = LABEL_W + b * beatW;
+    line(ctx, x, 0, x, h);
+  }
+  for (let ni = 0; ni <= MUSIC_NOTES.length; ni++) {
+    const y = ni * noteH;
+    ctx.strokeStyle = ni % 12 === 0 ? '#2a3055' : '#1c2038';
+    ctx.lineWidth = ni % 12 === 0 ? 1 : 0.5;
+    line(ctx, LABEL_W, y, w, y);
+  }
+
+  for (let b = 0; b < beatCount; b++) {
+    const x = LABEL_W + (b + 0.5) * beatW;
+    ctx.fillStyle = b === active ? '#06b6d4' : '#3a4060';
+    ctx.font = `bold ${Math.min(11, beatW * 0.35)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(b + 1, x, noteH * 0.78);
+  }
+
+  for (let ni = 0; ni < MUSIC_NOTES.length; ni++) {
+    const note = MUSIC_NOTES[ni];
+    const y    = ni * noteH;
+    ctx.fillStyle = note.isSharp ? '#16192e' : '#1c213a';
+    ctx.fillRect(0, y, LABEL_W, noteH);
+    if (!note.isSharp && noteH >= 7) {
+      ctx.fillStyle = '#5060a0';
+      ctx.font = `${Math.min(9, noteH * 0.72)}px monospace`;
+      ctx.textAlign = 'right';
+      ctx.fillText(note.key, LABEL_W - 3, y + noteH * 0.82);
+    }
+  }
+}
+
+// Piano roll mouse events
+const pianoCanvas = document.getElementById('cPiano');
+pianoCanvas.addEventListener('mousedown', e => {
+  prDragVal = null;
+  const c = getCellAt(e.clientX, e.clientY);
+  if (c) toggleCell(c.beat, c.ni);
+  prDragging = true;
+});
+document.addEventListener('mousemove', e => {
+  if (!prDragging) return;
+  const c = getCellAt(e.clientX, e.clientY);
+  if (c) toggleCell(c.beat, c.ni);
+});
+document.addEventListener('mouseup', () => { prDragging = false; prDragVal = null; });
+
+// Piano roll click on beat number → preview beat
+pianoCanvas.addEventListener('click', e => {
+  if (isPlaying) return;
+  const canvas = pianoCanvas;
+  const rect   = canvas.getBoundingClientRect();
+  const noteH  = rect.height / MUSIC_NOTES.length;
+  const beatW  = (rect.width - LABEL_W) / beatCount;
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  if (y < noteH && x > LABEL_W) {
+    const beat = Math.floor((x - LABEL_W) / beatW);
+    if (beat >= 0 && beat < beatCount) { previewBeat = beat; applyBeat(beat); drawPianoRoll(); }
+  }
+});
+
+// Piano roll touch events
+pianoCanvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  prDragVal = null;
+  const touch = e.touches[0];
+  const c = getCellAt(touch.clientX, touch.clientY);
+  if (c) toggleCell(c.beat, c.ni);
+  prDragging = true;
+}, { passive: false });
+
+pianoCanvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!prDragging) return;
+  const touch = e.touches[0];
+  const c = getCellAt(touch.clientX, touch.clientY);
+  if (c) toggleCell(c.beat, c.ni);
+}, { passive: false });
+
+pianoCanvas.addEventListener('touchend', () => {
+  prDragging = false; prDragVal = null;
+});
+
+// ─── Apply beat to beatComps ──────────────────────────────────
+function applyBeat(beat) {
+  beatComps = [];
+  for (const key of pianoRoll[beat]) {
+    const n = MUSIC_NOTES.find(m => m.key === key);
+    if (n) beatComps.push({ id: 'b_' + key, freq: n.freq, amp: 0.7, color: n.color });
+  }
+  rebuildComponents();
+  drawTimeDomain();
+  drawWinding();
+  scheduleFourier();
+  syncAudio();
+}
+
+// ─── Playback ─────────────────────────────────────────────────
+function togglePlay() {
+  isPlaying ? stopPlay() : startPlay();
+}
+function startPlay() {
+  isPlaying = true;
+  currentBeat = 0;
+  const btn = document.getElementById('playBtn');
+  btn.textContent = '⏸ Stop'; btn.classList.add('on');
+  applyBeat(0); drawPianoRoll();
+  const ms = 60000 / bpm;
+  playTimerId = setInterval(() => {
+    currentBeat = (currentBeat + 1) % beatCount;
+    applyBeat(currentBeat); drawPianoRoll();
+  }, ms);
+}
+function stopPlay() {
+  isPlaying = false;
+  clearInterval(playTimerId);
+  const btn = document.getElementById('playBtn');
+  btn.textContent = '▶ Play'; btn.classList.remove('on');
+  applyBeat(previewBeat); drawPianoRoll();
+}
+function setBpm(v) {
+  bpm = v; document.getElementById('bpmVal').textContent = v;
+  if (isPlaying) { stopPlay(); startPlay(); }
+}
+function setBeatCount(n) {
+  if (isPlaying) stopPlay();
+  while (pianoRoll.length < n) pianoRoll.push(new Set());
+  pianoRoll.length = n;
+  beatCount = n;
+  if (previewBeat >= n) previewBeat = 0;
+  drawPianoRoll();
+}
+
+// ─── Presets ──────────────────────────────────────────────────
+function clearRoll() {
+  if (isPlaying) stopPlay();
+  pianoRoll = Array.from({length: beatCount}, () => new Set());
+  beatComps = []; rebuildComponents();
+  drawPianoRoll(); drawTimeDomain(); drawWinding(); scheduleFourier(); syncAudio();
+}
+function applyPreset(name) {
+  if (isPlaying) stopPlay();
+  clearRoll();
+  const P = {
+    scale:  [['C4'],['D4'],['E4'],['F4'],['G4'],['A4'],['B4'],['C5']],
+    cMaj:   [['C4','E4','G4'],['C4','E4','G4'],['C4','E4','G4'],['C4','E4','G4'],
+             ['F4','A4','C5'],['F4','A4','C5'],['G4','B4','D5'],['C4','E4','G4']],
+    aMaj:   [['A3','C#4','E4'],['A3','C#4','E4'],['A3','C#4','E4'],['A3','C#4','E4'],
+             ['A3','C#4','E4'],['A3','C#4','E4'],['A3','C#4','E4'],['A3','C#4','E4']],
+    fifth:  [['C4','G4'],['D4','A4'],['E4','B4'],['F4','C5'],
+             ['G4','D5'],['A4','E5'],['B4','F#5'],['C5','G5']],
+    octave: [['C3','C4'],['C3','C4'],['C3','C4','C5'],['C3','C4','C5'],
+             ['A3','A4'],['A3','A4'],['A3','A4','A5'],['A3','A4','A5']],
+  };
+  const beats = P[name] || [];
+  for (let b = 0; b < Math.min(beatCount, beats.length); b++) {
+    for (const k of beats[b]) {
+      if (MUSIC_NOTES.find(n => n.key === k)) pianoRoll[b].add(k);
+    }
+  }
+  previewBeat = 0; applyBeat(0); drawPianoRoll();
+}
+
+// ─── Custom frequencies ───────────────────────────────────────
+const CPAL = ['#f0a500','#e84393','#00e5ff','#76ff03','#ff6d00','#ea80fc'];
+let custCI = 0;
+function addCustomFreq() {
+  const f = parseFloat(document.getElementById('custFreq').value);
+  if (!f || f <= 0) return;
+  customComps.push({ id: 'c_' + custNextId++, freq: +f.toFixed(2), amp: 0.8,
+    color: CPAL[custCI++ % CPAL.length] });
+  rebuildComponents(); renderCustList(); drawTimeDomain(); drawWinding(); scheduleFourier();
+}
+function removeCustom(id) {
+  customComps = customComps.filter(c => c.id !== id);
+  rebuildComponents(); renderCustList(); drawTimeDomain(); drawWinding(); scheduleFourier();
+}
+function renderCustList() {
+  const el = document.getElementById('custList');
+  el.innerHTML = customComps.map(c => `
+    <div class="cust-item">
+      <div class="cust-dot" style="background:${c.color}"></div>
+      <span class="cust-label">${c.freq} Hz</span>
+      <button class="btn-x" onclick="removeCustom('${c.id}')">&#215;</button>
+    </div>`).join('');
+}
+
+// ─── Winding slider ───────────────────────────────────────────
+const windSlider = document.getElementById('windSlider');
+const windValEl  = document.getElementById('windVal');
+const windUnitEl = document.getElementById('windUnit');
+
+windSlider.addEventListener('input', () => {
+  windingFreq = +windSlider.value;
+  updateWindLabel(); drawWinding(); drawFourier();
+});
+function setWindingFreq(f) {
+  const fMax = fourierCache ? fourierCache.fMax : +windSlider.max;
+  windingFreq = Math.max(0, Math.min(fMax, f));
+  windSlider.value = windingFreq;
+  updateWindLabel(); drawWinding(); drawFourier();
+}
+function updateWindingSlider() {
+  const fMax = fourierCache ? fourierCache.fMax : 600;
+  windSlider.max  = fMax;
+  windSlider.step = fMax > 100 ? 1 : 0.02;
+  updateWindLabel();
+}
+function updateWindLabel() {
+  windValEl.textContent = windingFreq >= 10 ? windingFreq.toFixed(0) : windingFreq.toFixed(2);
+  windUnitEl.textContent = 'Hz';
+}
+
+// ─── Draw: Time Domain ────────────────────────────────────────
+function drawTimeDomain() {
+  const { ctx, w, h } = getCtx('cTime');
+  ctx.clearRect(0, 0, w, h);
+  const p = { t:16, b:18, l:38, r:8 };
+  const cw = w - p.l - p.r, ch = h - p.t - p.b;
+  const midY = p.t + ch / 2;
+  const { displayT } = getParams();
+  const amp = getSignalPeak(displayT);
+
+  ctx.strokeStyle = '#1a1e30'; ctx.lineWidth = 0.5;
+  for (let i = 1; i < 8; i++) line(ctx, p.l + cw*i/8, p.t, p.l + cw*i/8, p.t+ch);
+  for (let i = 1; i < 4; i++) line(ctx, p.l, p.t + ch*i/4, p.l+cw, p.t + ch*i/4);
+
+  ctx.strokeStyle = '#2a2d3e'; ctx.lineWidth = 1;
+  line(ctx, p.l, midY, p.l + cw, midY);
+
+  ctx.fillStyle = '#3a4060'; ctx.font = '9px monospace';
+  ctx.textAlign = 'right';
+  const ampLabel = amp >= 1 ? amp.toFixed(1) : amp.toFixed(2);
+  ctx.fillText('+'+ampLabel, p.l-3, p.t+8);
+  ctx.fillText('0',          p.l-3, midY+4);
+  ctx.fillText('-'+ampLabel, p.l-3, p.t+ch+2);
+  ctx.textAlign = 'center';
+  ctx.fillText('0',               p.l,     h-4);
+  ctx.fillText(fmtTime(displayT), p.l+cw,  h-4);
+
+  for (const c of components) {
+    ctx.beginPath(); ctx.strokeStyle = c.color + '55'; ctx.lineWidth = 1;
+    for (let i = 0; i <= cw; i++) {
+      const t = (i / cw) * displayT;
+      const y = midY - (c.amp * Math.sin(2 * Math.PI * c.freq * t)) / amp * (ch/2);
+      i === 0 ? ctx.moveTo(p.l+i, y) : ctx.lineTo(p.l+i, y);
+    }
+    ctx.stroke();
+  }
+  ctx.beginPath(); ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1.6;
+  for (let i = 0; i <= cw; i++) {
+    const t = (i / cw) * displayT;
+    const y = midY - evalSignal(t) / amp * (ch/2);
+    i === 0 ? ctx.moveTo(p.l+i, y) : ctx.lineTo(p.l+i, y);
+  }
+  ctx.stroke();
+
+  let lx = p.l + 4;
+  for (const c of components) {
+    ctx.fillStyle = c.color; ctx.fillRect(lx, p.t+3, 12, 2);
+    ctx.fillStyle = c.color+'cc'; ctx.font='9px monospace'; ctx.textAlign='left';
+    ctx.fillText(c.freq < 1000 ? c.freq+'Hz' : (c.freq/1000).toFixed(2)+'kHz', lx+14, p.t+10);
+    lx += 55;
+    if (lx > w - 60) break;
+  }
+}
+
+function fmtTime(t) {
+  return t < 0.01 ? (t*1000).toFixed(1)+'ms' : t < 1 ? (t*1000).toFixed(0)+'ms' : t.toFixed(2)+'s';
+}
+
+// ─── Draw: Winding ────────────────────────────────────────────
+function drawWinding() {
+  const { ctx, w, h } = getCtx('cWinding');
+  ctx.clearRect(0, 0, w, h);
+  const cx = w/2, cy = h/2;
+  const amp   = Math.max(components.reduce((s, c) => s + c.amp, 0), 0.01);
+  const scale = Math.min(w, h) * 0.40 / amp;
+  const { windT: T, N } = getParams();
+
+  for (let r = 1; r <= Math.ceil(amp * 1.1); r++) {
+    ctx.beginPath(); ctx.arc(cx, cy, r * scale, 0, Math.PI*2);
+    ctx.strokeStyle = r === 1 ? '#252840' : '#1a1e30';
+    ctx.lineWidth   = r === 1 ? 0.8 : 0.4;
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#252840'; ctx.lineWidth = 0.5;
+  const R = amp * scale * 1.1;
+  line(ctx, cx - R, cy, cx + R, cy);
+  line(ctx, cx, cy - R, cx, cy + R);
+
+  const revs = windingFreq * T;
+
+  if (components.length === 0) {
+    ctx.fillStyle = '#3a4060'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('No signal', cx, cy);
+  } else {
+    ctx.beginPath(); ctx.strokeStyle = '#8b5cf6bb'; ctx.lineWidth = revs > 30 ? 0.6 : 1.2;
+    for (let j = 0; j <= N; j++) {
+      const t  = (j / N) * T;
+      const r  = evalSignal(t);
+      const th = 2 * Math.PI * windingFreq * t;
+      const px = cx + r * Math.cos(th) * scale;
+      const py = cy - r * Math.sin(th) * scale;
+      j === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    {
+      const r0 = evalSignal(0);
+      ctx.fillStyle = '#a78bfa';
+      ctx.beginPath(); ctx.arc(cx + r0 * scale, cy, 3, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  let comX = 0, comY = 0;
+  if (components.length > 0) {
+    let sx = 0, sy = 0;
+    for (let j = 0; j < N; j++) {
+      const t = (j / N) * T, th = 2 * Math.PI * windingFreq * t;
+      const r = evalSignal(t);
+      sx += r * Math.cos(th); sy += r * Math.sin(th);
+    }
+    comX = sx / N * scale; comY = sy / N * scale;
+  }
+  const comMag = Math.sqrt(comX**2 + comY**2);
+
+  ctx.strokeStyle = '#ffd93d88'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+  line(ctx, cx, cy, cx + comX, cy - comY);
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#ffd93d';
+  ctx.beginPath(); ctx.arc(cx + comX, cy - comY, 5, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#ffffff30';
+  ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI*2); ctx.fill();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#06b6d4'; ctx.font = 'bold 10px monospace';
+  ctx.fillText('w = ' + (windingFreq >= 10 ? windingFreq.toFixed(1) : windingFreq.toFixed(2)) + ' Hz', cx, h-18);
+  if (revs > 1) {
+    ctx.fillStyle = '#3a4060'; ctx.font = '9px monospace';
+    ctx.fillText(revs.toFixed(0) + ' rev', cx, h-8);
+  }
+  ctx.fillStyle = '#ffd93d99'; ctx.font = '9px monospace';
+  ctx.fillText('|CoM| = ' + comMag.toFixed(3), cx, h - 28);
+}
+
+// ─── Draw: Fourier ────────────────────────────────────────────
+function drawFourier() {
+  const { ctx, w, h } = getCtx('cFourier');
+  ctx.clearRect(0, 0, w, h);
+  const p = { t:20, b:28, l:40, r:10 };
+  const cw = w - p.l - p.r, ch = h - p.t - p.b;
+
+  if (!fourierCache) {
+    ctx.fillStyle = '#3a4060'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('Computing…', w/2, h/2); return;
+  }
+  const { mag, fMax, FN } = fourierCache;
+  const maxMag = Math.max(...mag, 0.001);
+
+  ctx.strokeStyle = '#1a1e30'; ctx.lineWidth = 0.5;
+  for (let i = 1; i < 10; i++) line(ctx, p.l+cw*i/10, p.t, p.l+cw*i/10, p.t+ch);
+  for (let i = 1; i < 4; i++)  line(ctx, p.l, p.t+ch*i/4, p.l+cw, p.t+ch*i/4);
+
+  ctx.strokeStyle = '#2a2d3e'; ctx.lineWidth = 1;
+  line(ctx, p.l, p.t+ch, p.l+cw, p.t+ch);
+
+  ctx.fillStyle = '#3a4060'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
+  const nLabels = fMax > 200 ? 6 : 10;
+  for (let i = 0; i <= nLabels; i++) {
+    const f = fMax * i / nLabels;
+    const x = p.l + (f / fMax) * cw;
+    ctx.fillText(f >= 1000 ? (f/1000).toFixed(1)+'k' : f.toFixed(0), x, h-5);
+  }
+  ctx.textAlign = 'right';
+  ctx.fillText('|CoM|', p.l-3, p.t+9);
+
+  for (const c of components) {
+    if (c.freq > fMax) continue;
+    const x = p.l + (c.freq / fMax) * cw;
+    ctx.strokeStyle = c.color + '35'; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+    line(ctx, x, p.t, x, p.t+ch);
+    ctx.setLineDash([]);
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(p.l, p.t+ch);
+  for (let i = 0; i <= FN; i++) ctx.lineTo(p.l+(i/FN)*cw, p.t+ch-(mag[i]/maxMag)*ch);
+  ctx.lineTo(p.l+cw, p.t+ch); ctx.closePath();
+  ctx.fillStyle = '#8b5cf618'; ctx.fill();
+
+  ctx.beginPath(); ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 1.8;
+  for (let i = 0; i <= FN; i++) {
+    const x = p.l+(i/FN)*cw, y = p.t+ch-(mag[i]/maxMag)*ch;
+    i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  for (const c of components) {
+    if (c.freq > fMax) continue;
+    const x   = p.l + (c.freq / fMax) * cw;
+    const idx = Math.max(0, Math.min(FN, Math.round((c.freq/fMax)*FN)));
+    const y   = p.t + ch - (mag[idx] / maxMag) * ch;
+    ctx.fillStyle = c.color;
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = c.color; ctx.font = '8px monospace'; ctx.textAlign = 'center';
+    const lbl = c.freq >= 10 ? c.freq.toFixed(0)+'Hz' : c.freq.toFixed(1)+'Hz';
+    ctx.fillText(lbl, x, y - 6);
+  }
+
+  if (windingFreq <= fMax) {
+    const lx = p.l + (windingFreq / fMax) * cw;
+    ctx.strokeStyle = '#06b6d4'; ctx.lineWidth = 1.5;
+    line(ctx, lx, p.t, lx, p.t+ch);
+    const widx = Math.max(0, Math.min(FN, Math.round((windingFreq/fMax)*FN)));
+    const wy   = p.t + ch - (mag[widx] / maxMag) * ch;
+    ctx.fillStyle = '#06b6d4';
+    ctx.beginPath(); ctx.arc(lx, wy, 4, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+// Fourier canvas mouse events
+function fourierFreqFromEvent(e) {
+  const canvas = document.getElementById('cFourier');
+  const rect   = canvas.getBoundingClientRect();
+  const p_l = 40, p_r = 10;
+  const cw  = rect.width - p_l - p_r;
+  const fMax = fourierCache ? fourierCache.fMax : +windSlider.max;
+  return ((e.clientX - rect.left) - p_l) / cw * fMax;
+}
+function fourierFreqFromTouch(touch) {
+  const canvas = document.getElementById('cFourier');
+  const rect   = canvas.getBoundingClientRect();
+  const p_l = 40, p_r = 10;
+  const cw  = rect.width - p_l - p_r;
+  const fMax = fourierCache ? fourierCache.fMax : +windSlider.max;
+  return ((touch.clientX - rect.left) - p_l) / cw * fMax;
+}
+
+let fourierDrag = false;
+const fourierCanvas = document.getElementById('cFourier');
+fourierCanvas.addEventListener('mousedown', e => {
+  fourierDrag = true; const f = fourierFreqFromEvent(e); if (f >= 0) setWindingFreq(f);
+});
+document.addEventListener('mouseup',   () => fourierDrag = false);
+document.addEventListener('mousemove', e => {
+  if (fourierDrag) { const f = fourierFreqFromEvent(e); if (f >= 0) setWindingFreq(f); }
+});
+
+// Fourier canvas touch events
+fourierCanvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  fourierDrag = true;
+  const f = fourierFreqFromTouch(e.touches[0]);
+  if (f >= 0) setWindingFreq(f);
+}, { passive: false });
+fourierCanvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!fourierDrag) return;
+  const f = fourierFreqFromTouch(e.touches[0]);
+  if (f >= 0) setWindingFreq(f);
+}, { passive: false });
+fourierCanvas.addEventListener('touchend', () => { fourierDrag = false; });
+
+// ─── Sweep animation ──────────────────────────────────────────
+function toggleSweep() {
+  isSweeping = !isSweeping;
+  const btn = document.getElementById('animBtn');
+  if (isSweeping) {
+    btn.textContent = '⏸ Pause Sweep'; btn.classList.add('on');
+    sweepLastT = null; sweepDir = 1;
+    sweepSmoothedMag = 0; sweepRollingMax = 0; sweepPauseUntil = null; snapFreq = null;
+    requestAnimationFrame(sweepFrame);
+  } else {
+    btn.textContent = '▶ Sweep'; btn.classList.remove('on');
+  }
+}
+function sweepBounce() { sweepDir *= -1; }
+function sweepFrame(ts) {
+  if (!isSweeping) return;
+
+  if (sweepPauseUntil !== null) {
+    if (ts < sweepPauseUntil) { sweepLastT = ts; requestAnimationFrame(sweepFrame); return; }
+    sweepPauseUntil = null;
+    snapFreq = null;
+    sweepSmoothedMag = 0; sweepRollingMax = 0;
+    computeFourier(); renderAll();
+    sweepLastT = ts;
+    requestAnimationFrame(sweepFrame);
+    return;
+  }
+
+  if (sweepLastT !== null) {
+    const fMax = fourierCache ? fourierCache.fMax : 600;
+    const dt   = (ts - sweepLastT) / 1000;
+
+    let rawMag = 0;
+    if (fourierCache && fourierCache.FN > 0) {
+      const maxMag = Math.max(...fourierCache.mag);
+      if (maxMag > 0) {
+        const idx = Math.max(0, Math.min(fourierCache.FN,
+          Math.round((windingFreq / fMax) * fourierCache.FN)));
+        rawMag = fourierCache.mag[idx] / maxMag;
+      }
+    }
+
+    const alpha = sweepSmooth ? Math.min(1, 8 * dt) : 1;
+    sweepSmoothedMag += alpha * (rawMag - sweepSmoothedMag);
+    const usedMag = sweepSmoothedMag;
+
+    if (usedMag > sweepRollingMax) sweepRollingMax = usedMag;
+    const pastPeak = sweepRollingMax > 0.25 && usedMag < sweepRollingMax * 0.92;
+    if (sweepPauseMs > 0 && pastPeak) {
+      sweepRollingMax = 0;
+      const snapped = nearestComponentFreq(windingFreq, 0.05);
+      if (snapped !== null) {
+        windingFreq = snapped;
+        windSlider.value = windingFreq;
+        updateWindLabel();
+        snapFreq = snapped;
+        computeFourier();
+        renderAll();
+      }
+      sweepPauseUntil = ts + sweepPauseMs;
+      sweepLastT = ts; requestAnimationFrame(sweepFrame); return;
+    }
+
+    const effectiveSpeed = sweepBaseSpeed / (1 + sweepMassFactor * usedMag);
+
+    windingFreq += sweepDir * effectiveSpeed * dt;
+    if (windingFreq >= fMax) {
+      windingFreq = fMax; sweepDir = -1;
+      sweepSmoothedMag = 0; sweepRollingMax = 0;
+    }
+    if (windingFreq <= 0) {
+      windingFreq = 0; sweepDir = 1;
+      sweepSmoothedMag = 0; sweepRollingMax = 0;
+    }
+    windSlider.value = windingFreq;
+    updateWindLabel(); drawWinding(); drawFourier();
+  }
+  sweepLastT = ts;
+  requestAnimationFrame(sweepFrame);
+}
+
+// ─── Audio ────────────────────────────────────────────────────
+function toggleAudio() {
+  audioEnabled = !audioEnabled;
+  const btn = document.getElementById('audioBtn');
+  if (audioEnabled) {
+    if (!audioCtx) audioCtx = new AudioContext();
+    syncAudio(); btn.textContent = '♪ Audio On'; btn.classList.add('on-cyan');
+  } else {
+    stopAllOsc(); btn.textContent = '♪ Audio Off'; btn.classList.remove('on-cyan');
+  }
+}
+function syncAudio() {
+  if (!audioEnabled || !audioCtx) return;
+  const now = audioCtx.currentTime;
+  for (const id in oscillators) {
+    if (!components.find(c => c.id == id)) {
+      oscillators[id].gain.gain.setTargetAtTime(0, now, 0.005);
+      const o = oscillators[id];
+      setTimeout(() => { try { o.osc.stop(); o.gain.disconnect(); } catch(e){} }, 80);
+      delete oscillators[id];
+    }
+  }
+  for (const c of components) {
+    if (!oscillators[c.id]) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine'; osc.frequency.value = c.freq;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(c.amp * 0.1, now + 0.01);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); oscillators[c.id] = { osc, gain };
+    } else {
+      oscillators[c.id].osc.frequency.setTargetAtTime(c.freq, now, 0.005);
+      oscillators[c.id].gain.gain.setTargetAtTime(c.amp * 0.1, now, 0.005);
+    }
+  }
+}
+function stopAllOsc() {
+  for (const id in oscillators) { oscillators[id].osc.stop(); oscillators[id].gain.disconnect(); }
+  oscillators = {};
+}
+
+// ─── Render ───────────────────────────────────────────────────
+function renderAll() { drawPianoRoll(); drawTimeDomain(); drawWinding(); drawFourier(); }
+
+const ro = new ResizeObserver(() => renderAll());
+['cPiano','cTime','cWinding','cFourier'].forEach(id => ro.observe(document.getElementById(id)));
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (isSweeping) { isSweeping = false; sweepLastT = null; }
+    if (isPlaying)  stopPlay();
+  }
+});
+
+// ─── Tests ────────────────────────────────────────────────────
+function runTests() {
+  const out = [];
+  let pass = 0, fail = 0;
+  function assert(name, cond, detail = '') {
+    if (cond) { out.push(`✓ ${name}`); pass++; }
+    else       { out.push(`✗ ${name}${detail ? ': ' + detail : ''}`); fail++; }
+  }
+
+  const savedComponents = components.slice();
+  const savedSnap = snapFreq;
+  const savedWind = windingFreq;
+
+  components = [{ id:'t1', freq:261.63, amp:1, color:'#fff' }];
+  assert('nearest: exact match',     nearestComponentFreq(261.63, 0.05) === 261.63);
+  assert('nearest: within 5%',       nearestComponentFreq(270, 0.05) === 261.63,
+         `got ${nearestComponentFreq(270, 0.05)}`);
+  assert('nearest: outside 5%',      nearestComponentFreq(300, 0.05) === null,
+         `got ${nearestComponentFreq(300, 0.05)}`);
+
+  snapFreq = null;
+  components = [{ id:'t2', freq:440, amp:1, color:'#fff' }];
+  let p = getParams();
+  assert('params: normal fourierT = 0.5',   Math.abs(p.fourierT - 0.5) < 0.001);
+  assert('params: normal windT = fourierT',  p.windT === p.fourierT);
+  assert('params: snapped=false',            !p.snapped);
+
+  snapFreq = 440;
+  p = getParams();
+  assert('params: snap windT = 4/440',      Math.abs(p.windT - 4/440) < 0.0001,
+         `got ${p.windT}`);
+  assert('params: snap fourierT still 0.5', Math.abs(p.fourierT - 0.5) < 0.001,
+         `got ${p.fourierT}`);
+  assert('params: snapped=true',            p.snapped);
+
+  components = [{ id:'t3', freq:10, amp:1, color:'#fff' }];
+  snapFreq = null;
+  assert('signal: sin peak at t=0.025s', Math.abs(evalSignal(1/40) - 1) < 0.001,
+         `got ${evalSignal(1/40).toFixed(4)}`);
+  assert('signal: zero at t=0',          Math.abs(evalSignal(0)) < 0.001);
+
+  components = [{ id:'t4', freq:5, amp:1, color:'#fff' }];
+  snapFreq = null;
+  computeFourier();
+  const { mag, FN, fMax } = fourierCache;
+  const peakIdx  = [...mag].indexOf(Math.max(...mag));
+  const peakFreq = (peakIdx / FN) * fMax;
+  assert('fourier: peak at 5 Hz (±0.5)',  Math.abs(peakFreq - 5) < 0.5,
+         `peak at ${peakFreq.toFixed(2)} Hz`);
+
+  let rollingMax = 0;
+  const mags = [0.1, 0.3, 0.6, 0.9, 0.95, 0.85, 0.7];
+  let pastPeakAt = -1;
+  mags.forEach((m, i) => {
+    if (m > rollingMax) rollingMax = m;
+    if (rollingMax > 0.25 && m < rollingMax * 0.92 && pastPeakAt < 0) pastPeakAt = i;
+  });
+  assert('rolling max: triggers after peak', pastPeakAt === 5,
+         `triggered at index ${pastPeakAt}`);
+
+  components = savedComponents;
+  snapFreq   = savedSnap;
+  windingFreq = savedWind;
+  computeFourier();
+
+  const el = document.getElementById('testOutput');
+  el.innerHTML = `<b>${pass}/${pass+fail} passed</b><br>` + out.join('<br>');
+  el.style.color = fail > 0 ? '#f87171' : '#4ade80';
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+updateWindingSlider();
+updateWindLabel();
+applyPreset('scale');
+</script>
+</body>
+</html>
