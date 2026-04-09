@@ -226,7 +226,7 @@ input[type=checkbox] { accent-color: #a78bfa; width: 16px; height: 16px; }
   <div class="tab-area">
 
     <!-- ══ TAB: PIANO ROLL ══════════════════════════ -->
-    <div class="tab-panel active" id="tab-piano">
+    <div class="tab-panel" id="tab-piano">
 
       <div class="piano-wrap">
         <span class="canvas-label">Piano Roll — tap &amp; drag to paint notes</span>
@@ -259,7 +259,7 @@ input[type=checkbox] { accent-color: #a78bfa; width: 16px; height: 16px; }
     </div><!-- /tab-piano -->
 
     <!-- ══ TAB: ANALYSIS ════════════════════════════ -->
-    <div class="tab-panel" id="tab-analysis">
+    <div class="tab-panel active" id="tab-analysis">
 
       <div class="canvas-wrap time-wrap">
         <span class="canvas-label">Time Domain</span>
@@ -304,19 +304,19 @@ input[type=checkbox] { accent-color: #a78bfa; width: 16px; height: 16px; }
           <div>
             <div class="speed-label-row">
               <span>Base speed</span>
-              <span class="val" id="sweepSpeedVal">60</span>
+              <span class="val" id="sweepSpeedVal">150</span>
               <span>Hz/s</span>
             </div>
-            <input type="range" id="sweepSpeedSlider" min="5" max="400" step="5" value="60"
+            <input type="range" id="sweepSpeedSlider" min="5" max="400" step="5" value="150"
               style="accent-color:var(--cyan)"
               oninput="sweepBaseSpeed=+this.value;document.getElementById('sweepSpeedVal').textContent=this.value">
           </div>
           <div style="margin-top:10px">
             <div class="speed-label-row">
               <span>Mass slowdown</span>
-              <span style="color:#a78bfa;font-variant-numeric:tabular-nums" id="sweepMassVal">0</span>
+              <span style="color:#a78bfa;font-variant-numeric:tabular-nums" id="sweepMassVal">400</span>
             </div>
-            <input type="range" id="sweepMassSlider" min="0" max="1000" step="1" value="0"
+            <input type="range" id="sweepMassSlider" min="0" max="1000" step="1" value="400"
               style="accent-color:#a78bfa"
               oninput="sweepMassFactor=+this.value;document.getElementById('sweepMassVal').textContent=this.value">
           </div>
@@ -360,10 +360,10 @@ input[type=checkbox] { accent-color: #a78bfa; width: 16px; height: 16px; }
   </div><!-- /tab-area -->
 
   <nav class="bottom-nav">
-    <button class="nav-btn active" id="nav-piano" onclick="showTab('piano',this)">
+    <button class="nav-btn" id="nav-piano" onclick="showTab('piano',this)">
       <span class="icon">&#127929;</span><span>Piano</span>
     </button>
-    <button class="nav-btn" id="nav-analysis" onclick="showTab('analysis',this)">
+    <button class="nav-btn active" id="nav-analysis" onclick="showTab('analysis',this)">
       <span class="icon">&#128202;</span><span>Analysis</span>
     </button>
     <button class="nav-btn" id="nav-settings" onclick="showTab('settings',this)">
@@ -427,8 +427,8 @@ let windingFreq  = 0;
 let fourierCache = null;
 let fourierTimer = null;
 let isSweeping    = false, sweepDir = 1, sweepLastT = null;
-let sweepBaseSpeed  = 60;
-let sweepMassFactor = 0;
+let sweepBaseSpeed  = 150;
+let sweepMassFactor = 400;
 let sweepSmooth     = false;
 let sweepPauseMs    = 0;
 let sweepSmoothedMag = 0;
@@ -1281,6 +1281,7 @@ function runTests() {
 updateWindingSlider();
 updateWindLabel();
 applyPreset('scale');
+toggleSweep();
 </script>
 </body>
 </html>
